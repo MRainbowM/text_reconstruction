@@ -2,6 +2,7 @@ from typing import Callable, List, Set
 
 import shell
 import util
+import wordsegUtil
 
 
 ############################################################
@@ -14,25 +15,29 @@ class SegmentationProblem(util.SearchProblem):
         self.unigramCost = unigramCost
 
     def startState(self):
+        """Возвращает начальное состояние"""
         return self.query
 
     def isEnd(self, state) -> bool:
+        """Проверяет, является ли состояние конечным"""
         return len(state) == 0
 
     def succAndCost(self, state):
+        """Принимает на вход состояние.
+        Возвращает массив кортежей, состоящих из:
+        - действия, слова (action);
+        - нового состояния (result);
+        - стоимости действия (cost)"""
         result = []
-        print(state)
+
         if len(state) > 0:
             for i in range(len(state), 0, -1):
                 action = state[:i]
                 remainder = state[len(action):]  # оставшийся текст
-                result.append((
-                    action,
-                    remainder,
-                    self.unigramCost(action)
-                ))
+                result.append((action, remainder, self.unigramCost(action)))
+        print('---')
         print(result)
-
+        print('---')
         return result
 
 
@@ -40,9 +45,9 @@ def segmentWords(query: str, unigramCost: Callable[[str], float]) -> str:
     if len(query) == 0:
         return ''
 
-    ucs = util.UniformCostSearch(verbose=1)
+    ucs = util.UniformCostSearch(verbose=0)
     ucs.solve(SegmentationProblem(query, unigramCost))
-
+    print(ucs.totalCost)
     return ' '.join(ucs.actions)
 
 
@@ -90,29 +95,44 @@ class JointSegmentationInsertionProblem(util.SearchProblem):
         self.possibleFills = possibleFills
 
     def startState(self):
-        # BEGIN_YOUR_CODE (our solution is 1 line of code, but don't worry if you deviate from this)
-        raise Exception("Not implemented yet")
-        # END_YOUR_CODE
+        return 0, wordsegUtil.SENTENCE_BEGIN  # position before which text is reconstructed & previous word
 
     def isEnd(self, state) -> bool:
-        # BEGIN_YOUR_CODE (our solution is 2 lines of code, but don't worry if you deviate from this)
-        raise Exception("Not implemented yet")
-        # END_YOUR_CODE
+        return state[0] == len(self.query)
 
     def succAndCost(self, state):
-        # BEGIN_YOUR_CODE (our solution is 14 lines of code, but don't worry if you deviate from this)
-        raise Exception("Not implemented yet")
-        # END_YOUR_CODE
+        results = []
+        position, prev_word = state
+        #print(state)
+        for l in range(1, len(self.query) - position + 1):
+            part = self.query[position:position + l]
+            collection = self.possibleFills(part)
+
+            #print("!!!!!!!" + str(part))
+            # print(self.possibleFills('f'))
+            #  print('collection')
+            #  print(collection)
+            for word in collection:
+                action = word
+                new_state = (position + l, word)
+                cost = self.bigramCost(prev_word, word)
+                results.append((action, new_state, cost))
+       # print(results)
+        return results
 
 
-def segmentAndInsert(query: str, bigramCost: Callable[[str, str], float],
+def segmentAndInsert(query: str, smoothCost: Callable[[str, str], float],
                      possibleFills: Callable[[str], Set[str]]) -> str:
     if len(query) == 0:
         return ''
 
-    # BEGIN_YOUR_CODE (our solution is 4 lines of code, but don't worry if you deviate from this)
-    raise Exception("Not implemented yet")
-    # END_YOUR_CODE
+    ucs = util.UniformCostSearch(verbose=0)
+    ucs.solve(JointSegmentationInsertionProblem(query, smoothCost, possibleFills))
+
+    print(ucs.actions)
+    print(ucs.totalCost)
+
+    return ' '.join(ucs.actions)
 
 
 ############################################################
